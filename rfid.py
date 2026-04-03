@@ -18,10 +18,10 @@ except ImportError:
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)  # Use BCM numbering
 
-# GPIO pins
-GREEN_LED = 2
-RED_LED = 3
-BUZZER = 4
+# GPIO pins (aligned with hardware.py and PIN_REFERENCE.md)
+GREEN_LED = 17
+RED_LED = 27
+BUZZER = 22
 
 GPIO.setup(GREEN_LED, GPIO.OUT)
 GPIO.setup(RED_LED, GPIO.OUT)

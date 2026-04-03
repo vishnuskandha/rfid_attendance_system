@@ -6,6 +6,7 @@ Debug I2C connection and LCD functionality
 
 import smbus2
 import time
+from datetime import datetime
 
 print("=" * 50)
 print("LCD I2C DISPLAY TEST")

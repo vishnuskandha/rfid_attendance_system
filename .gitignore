@@ -4,4 +4,12 @@ __pycache__/
 attendance.csv
 attendance.xlsx
 unknown_faces/
+unauthorized_faces/
 .env
+
+# Local face training data - contains personal photos, never commit
+known_faces/
+face_recognition_pi/known_faces/
+*.jpg
+*.jpeg
+*.png

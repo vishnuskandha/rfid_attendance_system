@@ -1,422 +1,170 @@
 # RFID & Face Recognition Attendance System
 
-A comprehensive attendance management system combining RFID card scanning and face recognition technology with hardware integration (LEDs, buzzer, LCD display) and Telegram notifications.
+[![CI](https://github.com/vishnuskandha/rfid_attendance_system/actions/workflows/ci.yml/badge.svg)](https://github.com/vishnuskandha/rfid_attendance_system/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 
-**Raspberry Pi 4/5 | Python 3.11+ | Real-time Processing | Cloud Integration**
+An attendance management system for the Raspberry Pi that combines RFID card
+scanning with real-time face recognition, wired to LED/buzzer/LCD hardware
+feedback and Telegram notifications.
 
----
+## Overview
 
-## 🚀 Features
+- **Face recognition** through a live camera feed using the `face_recognition`
+  library, matching detected faces against locally stored training images.
+- **RFID card scanning** through an RC522/MFRC522 reader running in a parallel
+  thread.
+- **Attendance logging** to CSV (combined system) or Excel (RFID-only mode)
+  with duplicate prevention and time-based `Present`/`Absent` status.
+- **Hardware feedback** - green/red LEDs, buzzer, and a 16x2 I2C LCD.
+- **Telegram alerts** for known and unknown faces/cards, sent asynchronously.
 
-### Core Functionality
-- ✅ **Face Recognition** - Real-time face detection and identification
-- ✅ **RFID Integration** - Support for RFID card scanning
-- ✅ **Parallel Processing** - Both systems work simultaneously
-- ✅ **Dual Attendance** - Same person can be marked via face or RFID
-- ✅ **Time-Based Status** - Present (≤09:00) / Absent (>09:00)
-
-### Hardware Integration
-- 🟢 **Green LED** - Indicates registered/present
-- 🔴 **Red LED** - Indicates unknown/unregistered
-- 🔔 **Buzzer** - Audio feedback (1 beep for registered, 5 for unknown)
-- 📱 **16x2 LCD Display** - I2C connected for status display
-- 📷 **HD Camera** - Real-time video processing
-
-### Data Management
-- 📊 **CSV Logging** - All attendance records saved
-- 🖼️ **Unknown Face Storage** - Images saved to `unknown_faces/`
-- 📲 **Telegram Alerts** - Real-time notifications with images
-- 📊 **Attendance Reports** - Exportable data in CSV format
-
-### Performance
-- ⚡ **3-4x Faster** - Frame skipping and resizing optimization
-- 🎯 **Smart Duplication** - Prevents duplicate marking per minute
-- 🔄 **Non-blocking** - Telegram sends in background threads
-- 🧵 **Multi-threaded** - RFID and face recognition run in parallel
-
----
-
-## 📦 System Architecture
+## System Architecture
 
 ```
-rfid_attendance/
-├── test.py                 # Main system (Face + RFID)
-├── rfid.py                 # Standalone RFID system
-├── hardware.py             # LED/Buzzer/LCD control
-├── known_faces/            # Training data for face recognition
-│   ├── srinivas/
-│   ├── manish/
-│   └── ...
-├── unknown_faces/          # Unknown face images
-├── attendance.csv          # Attendance records
-├── venv/                   # Python virtual environment
-└── docs/
-    ├── README.md           # This file
-    ├── SETUP.md            # Installation guide
-    ├── USAGE.md            # Usage instructions
-    ├── HARDWARE_SETUP.md   # Hardware configuration
-    ├── API_REFERENCE.md    # Function documentation
-    └── TROUBLESHOOTING.md  # Common issues
+rfid_attendance_system/
+├── test.py                  # Main system: face recognition + RFID (entry point)
+├── rfid.py                  # Standalone RFID-only attendance system
+├── hardware.py              # GPIO (LED/buzzer) and I2C LCD control
+├── face.py                  # Pi-camera face door auth demo
+├── face_recognition_pi/     # Older standalone Pi face-auth demos (keypad, Twilio)
+│   ├── face.py
+│   ├── face_twilio.py
+│   ├── facerecognition.py
+│   └── test.py
+├── test_hardware.py         # Hardware test utility (LED/buzzer/LCD)
+├── test_gpio_i2c.py         # GPIO/I2C pin test utility
+├── test_lcd.py              # LCD/I2C test utility
+├── known_faces/             # Local training data - NOT committed (see below)
+├── unknown_faces/           # Generated at runtime - unknown face captures
+├── attendance.csv           # Generated at runtime - attendance records
+└── docs (.md)               # Full documentation set (see table below)
 ```
 
----
+Two independent detection paths feed one attendance log:
 
-## ⚡ Quick Start
+1. **Camera path** - captures frames, resizes/skips for speed, detects faces,
+   compares against encoded training data, and marks attendance.
+2. **RFID path** - runs in a background thread, reads card IDs, matches against
+   the registered-card table, and marks attendance.
 
-### 1. Installation (5 minutes)
+Both paths share hardware feedback and Telegram notification helpers.
 
-```bash
-# Clone/navigate to project
-cd /home/pi/rfid_attendance
+### Face Training Data
 
-# Activate virtual environment
-source venv/bin/activate
+`known_faces/` and `face_recognition_pi/known_faces/` are **local personal data
+and are excluded from version control** (`.gitignore`). Create one subdirectory
+per person, place 3-5 clear JPEG/PNG photos in each, and add the person to the
+`students` dictionary in `test.py`:
 
-# Install dependencies (if needed)
-pip install face-recognition opencv-python requests smbus2
-
-# Test hardware components
-python3 test_hardware.py
 ```
-
-### 2. Configure System
-
-**Edit student details** - Add names and roll numbers to [test.py](test.py#L43-L46):
-```python
-students = {
-    "name1": {"roll": "21CS001"},
-    "name2": {"roll": "21CS002"}
-}
-```
-
-**Add RFID cards** - Register cards in [test.py](test.py#L48-L52):
-```python
-rfid_students = {
-    769616991850: {"name": "Name", "roll": "21CS001"},
-    886622847095: {"name": "Name", "roll": "21CS002"}
-}
-```
-
-**Set Telegram credentials** - Update in [test.py](test.py#L63-L64):
-```python
-TELEGRAM_BOT_TOKEN = "your_bot_token"
-TELEGRAM_CHAT_ID = "your_chat_id"
-```
-
-### 3. Add Face Training Data
-
-Place face images in `known_faces/` directory:
-```bash
 known_faces/
 ├── srinivas/
 │   ├── srinivas.jpg
-│   ├── srinivas_1.jpg
-│   └── ...
-├── manish/
-│   ├── manish.jpg
-│   └── ...
+│   └── srinivas_1.jpg
+└── manish/
+    ├── manish.jpg
+    └── manish_1.jpg
 ```
 
-⚠️ **Requirements:**
-- Clear face images
-- Good lighting
-- Multiple angles (3-5 images per person)
-- Face should occupy 50%+ of image
-- JPEG or PNG format
+## Quick Start
 
-### 4. Run System
+1. **Setup** - enable camera/I2C/GPIO and install dependencies. See
+   [SETUP.md](SETUP.md).
+2. **Configure** - add students, register RFID cards, and set Telegram
+   credentials in `test.py`. See [USAGE.md](USAGE.md).
+3. **Reference** - the essential commands are in
+   [QUICK_REFERENCE.md](QUICK_REFERENCE.md).
 
-**Start the combined system:**
+Then run:
+
 ```bash
+# Combined face + RFID system
 python3 test.py
-```
 
-**Or run RFID only:**
-```bash
+# RFID only
 python3 rfid.py
 ```
 
----
+## Features
 
-## 🎯 Attendance Logic
+| Area | Capability |
+|------|------------|
+| Face recognition | Real-time detection and identification, HOG model, frame skip + resize for speed |
+| RFID | RC522/MFRC522 scanning in a background thread, per-minute duplicate prevention |
+| Attendance status | `Present` (<= 09:00), `Absent` (> 09:00); cut-off configurable |
+| Logging | CSV (`attendance.csv`) or Excel (`attendance.xlsx`), one row per person per day |
+| Hardware | Green LED (registered), red LED (unknown), buzzer patterns, 16x2 I2C LCD |
+| Notifications | Telegram messages with images for unknown faces (async, non-blocking) |
+| Unknown face capture | Saves `unknown_YYYYMMDD_HHMMSS_N.jpg` into `unknown_faces/` |
 
-### Time-Based Status
-| Time | Status | Notes |
-|------|--------|-------|
-| ≤ 09:00 | **Present** | On time |
-| > 09:00 | **Absent** | Late |
+## Configuration Highlights
 
-### Detection Methods
+All settings live at the top of `test.py`:
 
-**Face Recognition:**
-- Real-time camera feed processing
-- Compares detected faces against trained encodings
-- Marks attendance automatically
-
-**RFID Card:**
-- Continuous card scanning
-- Matches card ID against registered database
-- Immediate attendance marking
-
-**Combined Usage:**
-- Same person can use either method
-- Duplicate prevention per minute
-- All records saved to CSV
-
----
-
-## 📋 Output Format
-
-### Console Output
-```
-✓ KNOWN FACE
-  Name: srinivas, Roll: 21CS001
-  Status: Present | Time: 08:45:30
-✓ CSV: srinivas | 21CS001 | Present | 08:45:30
-```
-
-### CSV File (attendance.csv)
-```
-Date,Name,Roll Number,Time,Status
-2026-03-13,srinivas,21CS001,08:45:30,Present
-2026-03-13,manish,21CS002,09:15:45,Absent
-```
-
-### Telegram Notification
-```
-✓ Attendance Marked
-Name: srinivas
-Roll: 21CS001
-Status: Present
-Time: 08:45:30
-
-[Image attached for unknown faces]
-```
-
----
-
-## 🔧 Hardware Setup
-
-### GPIO Pins (Default)
-- **Green LED**: GPIO 2
-- **Red LED**: GPIO 3
-- **Buzzer**: GPIO 4
-- **I2C SDA**: GPIO 2 (Pin 3)
-- **I2C SCL**: GPIO 3 (Pin 5)
-
-### Wiring Diagram
-See [HARDWARE_SETUP.md](HARDWARE_SETUP.md) for detailed wiring instructions.
-
-### LCD Display
-- **Type**: 16x2 I2C LCD
-- **Default Address**: 0x27 (or 0x3F)
-- **Connection**: I2C (2 wires + power)
-
----
-
-## 📱 Telegram Integration
-
-### Setup Bot
-1. Create bot via [@BotFather](https://t.me/botfather)
-2. Get bot token
-3. Message your bot to get Chat ID
-4. Add credentials to `test.py`
-
-### Notifications Sent
-- ✅ Registered face detected
-- ❌ Unknown face detected (with image)
-- ✅ RFID card recognized
-- ❌ Unknown card detected
-
----
-
-## 📊 Data Files
-
-### Generated on Runtime
-- **attendance.csv** - All attendance records
-- **unknown_faces/** - Directory with unknown face images
-  - Format: `unknown_YYYYMMDD_HHMMSS_N.jpg`
-
-### Backed Up Regularly
-```bash
-# Backup attendance
-cp attendance.csv attendance_backup_$(date +%Y%m%d).csv
-
-# Backup unknown faces
-tar -czf unknown_faces_backup_$(date +%Y%m%d).tar.gz unknown_faces/
-```
-
----
-
-## ⚙️ Configuration
-
-### Performance Tuning
-Edit these in [test.py](test.py#L19-L22):
 ```python
-FRAME_RESIZE_SCALE = 0.5      # Resize frames (0.5 = 50%)
-FACE_MATCH_THRESHOLD = 0.4    # Lower = stricter matching
-FRAME_SKIP = 2                 # Process every Nth frame
-TELEGRAM_TIMEOUT = 3           # Seconds for API timeout
+FRAME_RESIZE_SCALE = 0.5     # Resize frames to 50% for faster processing
+FACE_MATCH_THRESHOLD = 0.4   # Lower = stricter matching
+FRAME_SKIP = 2               # Process every Nth frame
+TELEGRAM_TIMEOUT = 3         # Telegram request timeout (seconds)
 ```
 
-### Time Settings
-Edit cutoff time in [hardware.py](hardware.py#L152):
-```python
-cutoff_time = datetime.strptime("09:00", "%H:%M").time()
-```
+Telegram credentials are loaded from the environment (`.env`) via
+`python-dotenv` - do not hard-code tokens. The attendance cut-off time and LCD
+I2C address are configured in `hardware.py`.
 
-### I2C Address
-If LCD at different address, update [hardware.py](hardware.py#L30):
-```python
-LCD_I2C_ADDRESS = 0x3F  # Try 0x3F if 0x27 doesn't work
-```
+## GPIO Pin Reference
 
----
+| Component | GPIO | Physical Pin |
+|-----------|------|--------------|
+| Green LED | 17   | 11           |
+| Red LED   | 27   | 13           |
+| Buzzer    | 22   | 15           |
+| LCD SDA   | 2    | 3            |
+| LCD SCL   | 3    | 5            |
+| LCD I2C address | - | 0x27 (or 0x3F) |
 
-## 🐛 Troubleshooting
+See [PIN_REFERENCE.md](PIN_REFERENCE.md) and
+[HARDWARE_SETUP.md](HARDWARE_SETUP.md) for the full wiring guide.
 
-### Camera Issues
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [SETUP.md](SETUP.md) | Full installation and configuration guide |
+| [USAGE.md](USAGE.md) | Operating modes, adding people/cards, monitoring |
+| [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Essential commands at a glance |
+| [HARDWARE_SETUP.md](HARDWARE_SETUP.md) | Wiring and hardware integration |
+| [HARDWARE_STATUS.md](HARDWARE_STATUS.md) | Verified working pin configuration |
+| [PIN_REFERENCE.md](PIN_REFERENCE.md) | GPIO pin cheat sheet |
+| [API_REFERENCE.md](API_REFERENCE.md) | Function and module documentation |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common issues and fixes |
+
+## Testing
+
+This project runs on Raspberry Pi hardware; the test utilities require physical
+devices:
+
 ```bash
-# Test camera
-libcamera-hello -t 5000
-
-# Check camera connection
-vcgencmd get_camera
+python3 -m py_compile test.py rfid.py hardware.py face.py
+python3 test_hardware.py    # LED, buzzer, LCD test (Pi only)
+python3 test_lcd.py         # LCD/I2C test (Pi only)
+python3 test_gpio_i2c.py    # GPIO pin test (Pi only)
 ```
 
-### RFID Not Detected
-```bash
-# Install RFID library
-pip install mfrc522
+CI runs a syntax check (`py_compile`) on every commit and pull request.
 
-# Check GPIO permissions
-sudo raspi-config
-# Interfacing Options > GPIO > Enable
-```
+## Security
 
-### LCD Display Not Working
-```bash
-# Scan I2C devices
-i2cdetect -y 1
+- Keep face images, attendance records, and credentials private; see
+  [SECURITY.md](SECURITY.md) for details.
+- Never commit `.env`, `known_faces/`, or runtime data files.
 
-# Check address in hardware.py and update if needed
-```
+## Contributing
 
-### Face Recognition Accuracy
-- Add more training images (5+ per person)
-- Improve lighting conditions
-- Adjust `FACE_MATCH_THRESHOLD` in test.py
-- Use different angles for training
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow and
+checklist.
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for more solutions.
+## License
 
----
-
-## 📚 Documentation
-
-- [SETUP.md](SETUP.md) - Detailed installation & configuration
-- [USAGE.md](USAGE.md) - How to use the system
-- [HARDWARE_SETUP.md](HARDWARE_SETUP.md) - Hardware configuration
-- [API_REFERENCE.md](API_REFERENCE.md) - Function documentation
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues & fixes
-
----
-
-## 📝 File Guide
-
-| File | Purpose |
-|------|---------|
-| `test.py` | Main system with face + RFID |
-| `rfid.py` | Standalone RFID system |
-| `hardware.py` | LED/Buzzer/LCD control |
-| `test_hardware.py` | Hardware testing utility |
-| `attendance.csv` | Attendance records |
-| `known_faces/` | Face training data |
-| `unknown_faces/` | Unknown face images |
-| `venv/` | Python dependencies |
-
----
-
-## 🔐 Security Notes
-
-- ⚠️ **Telegram Token**: Store securely, don't commit to version control
-- ⚠️ **GPIO Access**: May require sudo permissions
-- ⚠️ **Face Data**: Store training images securely
-- ⚠️ **CSV Records**: Contains sensitive attendance data
-
----
-
-## 📈 Performance Stats
-
-| Metric | Value |
-|--------|-------|
-| Face Detection | ~2-3 FPS (optimized) |
-| RFID Read Time | <1 second |
-| Telegram Send | 1-2 seconds (async) |
-| CPU Usage | 40-60% during processing |
-| Memory | ~200-300 MB |
-| Startup Time | 15-20 seconds (dataset loading) |
-
----
-
-## 🤝 System Integration
-
-### Integration Points
-- ✅ CSV export for Excel/Google Sheets
-- ✅ Telegram API for notifications
-- ✅ GPIO for hardware control
-- ✅ I2C for LCD display
-- ✅ OpenCV for video processing
-- ✅ face_recognition for face encoding
-
-### External APIs
-- Telegram Bot API
-- Google Sheets (via CSV export)
-- Email (via smtp, if configured)
-
----
-
-## 📞 Support & Issues
-
-### Common Issues
-1. **Camera not detected** → Check `vcgencmd get_camera`
-2. **RFID not working** → Check GPIO pins and library
-3. **LCD blank** → Verify I2C address with `i2cdetect -y 1`
-4. **Face accuracy low** → Add more training images
-
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed solutions.
-
----
-
-## 📋 License & Credits
-
-- **Framework**: Python 3.11+
-- **Face Recognition**: face_recognition library
-- **Computer Vision**: OpenCV
-- **Hardware**: RPi.GPIO, smbus2
-- **API**: Telegram Bot API
-
----
-
-## 🔄 Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | Mar 13, 2026 | Initial release with RFID + Face Recognition |
-| - | - | Hardware integration (LED/Buzzer/LCD) |
-| - | - | Telegram notifications |
-| - | - | CSV attendance logging |
-
----
-
-## 📝 Next Steps
-
-1. [SETUP.md](SETUP.md) - Install and configure
-2. [USAGE.md](USAGE.md) - Learn how to use
-3. [HARDWARE_SETUP.md](HARDWARE_SETUP.md) - Connect hardware
-4. Run `python3 test_hardware.py` - Test components
-5. Run `python3 test.py` - Start system
-
----
-
-**Last Updated**: March 13, 2026 | **Maintained By**: Development Team | **Status**: ✅ Production Ready
+MIT License - see [LICENSE](LICENSE). Copyright (c) 2026 Vishnu Skandha.

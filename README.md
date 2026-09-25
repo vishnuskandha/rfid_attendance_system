@@ -1,5 +1,15 @@
 # RFID & Face Recognition Attendance System
 
+
+<!-- README polish: repository metadata badges -->
+<p>
+  <a href="https://github.com/vishnuskandha/rfid_attendance_system"><img alt="GitHub stars" src="https://img.shields.io/github/stars/vishnuskandha/rfid_attendance_system?style=for-the-badge&logo=github&label=Stars"></a>
+  <a href="https://github.com/vishnuskandha/rfid_attendance_system/fork"><img alt="GitHub forks" src="https://img.shields.io/github/forks/vishnuskandha/rfid_attendance_system?style=for-the-badge&logo=github&label=Forks"></a>
+  <a href="https://github.com/vishnuskandha/rfid_attendance_system/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/vishnuskandha/rfid_attendance_system?style=for-the-badge&logo=github&label=Issues"></a>
+  <a href="https://github.com/vishnuskandha/rfid_attendance_system/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/vishnuskandha/rfid_attendance_system?style=for-the-badge&logo=git&label=Updated"></a>
+</p>
+<!-- End README polish -->
+
 [![CI](https://github.com/vishnuskandha/rfid_attendance_system/actions/workflows/ci.yml/badge.svg)](https://github.com/vishnuskandha/rfid_attendance_system/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)

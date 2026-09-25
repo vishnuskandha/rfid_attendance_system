@@ -1,4 +1,8 @@
+<div align="center">
+
 # RFID & Face Recognition Attendance System
+
+</div>
 
 
 <!-- README polish: repository metadata badges -->
